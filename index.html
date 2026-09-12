@@ -72,7 +72,23 @@
   .meta{display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--faint); letter-spacing:.05em}
   .meta .via{margin-left:auto; opacity:.8}
   .txt{margin:8px 0 0; font-size:16.5px; line-height:1.8; white-space:pre-wrap; word-break:break-word}
-  .act{display:flex; justify-content:flex-end; margin-top:9px}
+  .act{display:flex; align-items:center; justify-content:flex-end; margin-top:9px}
+  /* 手で書き足すところ */
+  #compose{
+    background:var(--card2); border:1px solid var(--accent-dim); border-radius:15px;
+    padding:13px 14px 11px; margin:14px 0 4px;
+  }
+  #compose textarea{
+    width:100%; padding:10px 11px; background:#101217;
+    border:1px solid var(--line); border-radius:11px; color:var(--ink);
+    font:16.5px/1.8 inherit; resize:none; overflow:hidden; min-height:78px;
+  }
+  #compose textarea:focus{outline:none; border-color:var(--accent-dim)}
+  #compose .act{margin-top:10px}
+
+  .act{gap:8px}
+  .act .del{margin-right:auto; border-color:transparent; background:transparent; color:#7d5a5a}
+  .act .del:active{color:#ff8a8a; background:transparent}
   .act button{
     border:1px solid var(--line); background:var(--card2); border-radius:10px;
     padding:7px 15px; font-size:13px; color:var(--dim);
@@ -152,6 +168,7 @@
     <div class="bar">
       <h1 class="logo"><i></i>ひらめき</h1>
       <span class="spacer"></span>
+      <button class="icon" id="addBtn" aria-label="手で書く">＋</button>
       <button class="icon" id="reload" aria-label="読み直す">⟳</button>
       <button class="icon" id="gearBtn" aria-label="設定">⚙</button>
     </div>
@@ -160,7 +177,16 @@
       <button class="tab" id="tabAll" aria-selected="false">ぜんぶ<b id="cAll"></b></button>
     </div>
   </header>
-  <main id="list"></main>
+  <main>
+    <div id="compose" hidden>
+      <textarea id="newTxt" placeholder="思いついたことを書く"></textarea>
+      <div class="act">
+        <button id="newCancel">やめる</button>
+        <button id="newSave" class="save">入れる</button>
+      </div>
+    </div>
+    <div id="list"></div>
+  </main>
 </div>
 
 <!-- 最初の1回だけ出る合言葉の入口 -->
@@ -179,7 +205,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const VER   = "v1.1.0";                 // 直したら上げる。version.txt と必ず同じにする
+const VER   = "v1.2.0";                 // 直したら上げる。version.txt と必ず同じにする
 const API   = "https://script.google.com/macros/s/AKfycbxSf6PiDg-_Ndm0xPOQ6wr6ZhKFMXO_TblqRQEw1NYgfWIGuiCNtXUSs_PmqERlVuHxdA/exec";
 const KEY   = "hirameki.key";           // 合言葉（この端末の中だけ）
 const CACHE = "hirameki.cache";         // 最後に読めた中身。圏外でも開けるように
@@ -243,7 +269,8 @@ function draw(){
           + `<div class="meta">${esc(t)}${x.done ? " ・拾った" : ""}`
           + `<span class="via">${esc(x.from || "")}</span></div>`
           + `<p class="txt">${esc(x.text)}</p>`
-          + `<div class="act"><button class="edit">直す</button>`
+          + `<div class="act"><button class="del">消す</button>`
+          + `<button class="edit">直す</button>`
           + (x.done ? "" : `<button class="pick">拾った</button>`)
           + `</div></article>`;
   }
@@ -360,14 +387,62 @@ async function saveEdit(card){
   }
 }
 
+/* ------------------------------------------------------------ 消す
+   「拾った」は隠すだけ。こちらは表から行ごと消すので戻せない。
+   だから必ず一度たずねる。 */
+async function removeOne(card){
+  const id = card.dataset.id;
+  const it = items.find(x => x.id === id); if(!it) return;
+  const peek = it.text.length > 24 ? it.text.slice(0, 24) + "…" : it.text;
+  if(!confirm("消すと戻せません。\n\n「" + peek + "」")) return;
+  try{
+    const d = await send({ op: "del", id });
+    if(!d.ok) throw new Error();
+    items = items.filter(x => x.id !== id);
+    try{ localStorage.setItem(CACHE, JSON.stringify(items)); }catch(e){}
+    draw(); toast("消しました");
+  }catch(e){ toast("消せませんでした"); }
+}
+
 document.addEventListener("click", e => {
   const card = e.target.closest(".item"); if(!card) return;
   if(e.target.closest(".save"))   return saveEdit(card);
   if(e.target.closest(".cancel")) return closeEdit(card);
+  if(e.target.closest(".del"))    return removeOne(card);
   if(e.target.closest(".edit"))   return openEdit(card);
   // 文字そのものを触っても直せる（指で押した場所から始まる）
   if(e.target.closest(".txt"))    return openEdit(card);
 });
+
+/* -------------------------------------------------------- 手で書き足す
+   声が使えない場所（静かな電車の中など）や、あとから思い出した分のため。
+   声で入ったものと同じ棚に入る。経路の欄だけ「手」になる。 */
+function openCompose(){
+  $("compose").hidden = false;
+  const ta = $("newTxt");
+  ta.value = ""; ta.style.height = "auto";
+  ta.focus();
+  $("compose").scrollIntoView({ block: "nearest" });
+}
+function closeCompose(){ $("compose").hidden = true; $("newTxt").value = ""; }
+
+$("addBtn").onclick    = () => $("compose").hidden ? openCompose() : closeCompose();
+$("newCancel").onclick = closeCompose;
+$("newTxt").addEventListener("input", e => grow(e.target));
+
+$("newSave").onclick = async () => {
+  const val = $("newTxt").value.trim();
+  if(!val){ toast("何か書いてください"); return; }
+  const btn = $("newSave");
+  btn.textContent = "…"; btn.disabled = true;
+  try{
+    const d = await send({ t: val, from: "手" });
+    if(!d.ok) throw new Error();
+    closeCompose(); toast("入れました");
+    await refresh(true);
+  }catch(e){ toast("入れられませんでした"); }
+  finally{ btn.textContent = "入れる"; btn.disabled = false; }
+};
 
 $("tabNew").onclick = () => { mode = "new"; draw(); };
 $("tabAll").onclick = () => { mode = "all"; draw(); };
