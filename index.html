@@ -1,0 +1,338 @@
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>ひらめき</title>
+<style>
+  :root{
+    --bg:#0c0d11; --card:#16181e; --card2:#1b1e25; --line:#272b34;
+    --ink:#e8ebf1; --dim:#858c9c; --faint:#5a6070;
+    --accent:#ffd24d; --accent-dim:#6b5a20;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html{background:var(--bg)}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:16px/1.7 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit; color:inherit}
+
+  /* ---------------------------------------------------------------- 見出し */
+  header{
+    position:sticky; top:0; z-index:20;
+    background:rgba(12,13,17,.88); backdrop-filter:saturate(160%) blur(14px);
+    border-bottom:1px solid var(--line);
+    padding:12px 16px 0;
+  }
+  .bar{display:flex; align-items:center; gap:10px; height:34px}
+  .logo{
+    font-size:17px; font-weight:700; letter-spacing:.18em; margin:0;
+    display:flex; align-items:center; gap:9px;
+  }
+  .logo i{
+    width:7px; height:7px; border-radius:50%; background:var(--accent);
+    box-shadow:0 0 10px 1px rgba(255,210,77,.55); font-style:normal;
+  }
+  .spacer{flex:1}
+  .icon{
+    width:34px; height:34px; border-radius:10px; border:1px solid var(--line);
+    background:transparent; font-size:15px; line-height:1;
+    display:grid; place-items:center;
+  }
+  .icon:active{background:var(--card2)}
+  .icon.spin{animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .tabs{display:flex; gap:22px; margin-top:6px}
+  .tab{
+    background:none; border:0; padding:9px 1px 11px; font-size:14.5px;
+    color:var(--faint); border-bottom:2px solid transparent; letter-spacing:.02em;
+  }
+  .tab[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent)}
+  .tab b{font-weight:600; color:var(--dim); margin-left:5px; font-size:12.5px}
+  .tab[aria-selected="true"] b{color:var(--accent)}
+
+  /* ------------------------------------------------------------------ 本体 */
+  main{padding:0 16px 60px; max-width:720px; margin:0 auto}
+  .day{
+    position:sticky; top:96px; z-index:10;
+    padding:18px 0 8px; font-size:12.5px; letter-spacing:.1em; color:var(--faint);
+    background:linear-gradient(var(--bg) 62%,transparent);
+  }
+  .item{
+    background:var(--card); border:1px solid var(--line); border-radius:15px;
+    padding:13px 15px 11px; margin-bottom:10px;
+    animation:in .22s ease both;
+  }
+  @keyframes in{from{opacity:0; transform:translateY(5px)}}
+  .item.done{background:transparent; border-style:dashed; opacity:.4}
+  .meta{display:flex; align-items:center; gap:8px; font-size:11.5px; color:var(--faint); letter-spacing:.05em}
+  .meta .via{margin-left:auto; opacity:.8}
+  .txt{margin:8px 0 0; font-size:16.5px; line-height:1.8; white-space:pre-wrap; word-break:break-word}
+  .act{display:flex; justify-content:flex-end; margin-top:9px}
+  .pick{
+    border:1px solid var(--line); background:var(--card2); border-radius:10px;
+    padding:7px 15px; font-size:13px; color:var(--dim);
+  }
+  .pick:active{background:#242832; color:var(--ink)}
+
+  /* ------------------------------------------------------------- 空・設定 */
+  .note{color:var(--dim); text-align:center; padding:80px 24px; line-height:2.1; font-size:14.5px}
+  .note b{display:block; color:var(--ink); font-size:18px; margin-bottom:10px; letter-spacing:.06em}
+
+  .gate{padding:56px 22px; max-width:460px; margin:0 auto}
+  .gate h2{font-size:19px; margin:0 0 10px; letter-spacing:.08em}
+  .gate p{color:var(--dim); font-size:14px; line-height:1.95; margin:0 0 22px}
+  .gate input{
+    width:100%; padding:15px 16px; font-size:16px; font-family:ui-monospace,Menlo,monospace;
+    background:var(--card); border:1px solid var(--line); border-radius:13px; color:var(--ink);
+    letter-spacing:.08em;
+  }
+  .gate input:focus{outline:none; border-color:var(--accent-dim)}
+  .gate button{
+    width:100%; margin-top:12px; padding:15px; font-size:15px; font-weight:600;
+    background:var(--accent); color:#15161a; border:0; border-radius:13px; letter-spacing:.08em;
+  }
+  .gate .err{color:#ff7a7a; font-size:13.5px; min-height:20px; margin-top:12px; text-align:center}
+  .gate .sub{font-size:12.5px; color:var(--faint); margin-top:20px; line-height:1.9; text-align:center}
+
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translate(-50%,70px);
+    background:var(--card2); border:1px solid var(--line); color:var(--ink);
+    padding:11px 20px; border-radius:12px; font-size:13.5px; z-index:50;
+    transition:transform .24s ease; box-shadow:0 10px 30px rgba(0,0,0,.5);
+  }
+  .toast.on{transform:translate(-50%,0)}
+  [hidden]{display:none !important}
+</style>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ひらめき">
+<meta name="theme-color" content="#0c0d11">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="robots" content="noindex, nofollow">
+
+<style>
+  /* 全画面アプリとして開くと、上はノッチ・下はホームバーに潜り込む。
+     body ではなく html に余白を持たせるので、元のレイアウトを壊さない。
+     position:fixed で組んだ画面には効かないので、その場合は自分で
+     env(safe-area-inset-*) を足すこと */
+  @supports (padding: env(safe-area-inset-top)) {
+    html {
+      box-sizing: border-box;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      background: #0c0d11;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ふだんの画面 -->
+<div id="app" hidden>
+  <header>
+    <div class="bar">
+      <h1 class="logo"><i></i>ひらめき</h1>
+      <span class="spacer"></span>
+      <button class="icon" id="reload" aria-label="読み直す">⟳</button>
+      <button class="icon" id="gearBtn" aria-label="設定">⚙</button>
+    </div>
+    <div class="tabs">
+      <button class="tab" id="tabNew" aria-selected="true">まだ拾ってない<b id="cNew"></b></button>
+      <button class="tab" id="tabAll" aria-selected="false">ぜんぶ<b id="cAll"></b></button>
+    </div>
+  </header>
+  <main id="list"></main>
+</div>
+
+<!-- 最初の1回だけ出る合言葉の入口 -->
+<div id="gate" class="gate" hidden>
+  <h2>ひらめき</h2>
+  <p>合言葉を1回だけ入れてください。<br>
+     このiPhoneの中にだけ保存されます。<br>
+     サイトには書かれていません。</p>
+  <input id="key" type="text" inputmode="latin" autocapitalize="off" autocorrect="off"
+         spellcheck="false" placeholder="16文字の合言葉">
+  <button id="go">開く</button>
+  <div class="err" id="err"></div>
+  <div class="sub">Macで <code>cat ~/hirameki/config</code> と打つと出てきます</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const VER   = "v1.0.0";                 // 直したら上げる。version.txt と必ず同じにする
+const API   = "https://script.google.com/macros/s/AKfycbxSf6PiDg-_Ndm0xPOQ6wr6ZhKFMXO_TblqRQEw1NYgfWIGuiCNtXUSs_PmqERlVuHxdA/exec";
+const KEY   = "hirameki.key";           // 合言葉（この端末の中だけ）
+const CACHE = "hirameki.cache";         // 最後に読めた中身。圏外でも開けるように
+
+const $ = id => document.getElementById(id);
+let items = [], mode = "new", busy = false;
+
+/* ---------------------------------------------------------------- 通信
+   GASは結果を別URLへ転送して返すので、ふつうの fetch はブラウザの安全装置に
+   弾かれる。関数呼び出しの形（JSONP）で受け取ればすり抜けられる。 */
+function call(params){
+  return new Promise((ok, ng) => {
+    const cb = "hira" + Math.random().toString(36).slice(2, 9);
+    const s  = document.createElement("script");
+    const t  = setTimeout(() => { cleanup(); ng(new Error("timeout")); }, 20000);
+    function cleanup(){ clearTimeout(t); delete window[cb]; s.remove(); }
+    window[cb] = d => { cleanup(); ok(d); };
+    s.onerror  = () => { cleanup(); ng(new Error("network")); };
+    const q = new URLSearchParams(Object.assign({ callback: cb }, params));
+    s.src = API + "?" + q.toString();
+    document.body.appendChild(s);
+  });
+}
+
+const token = () => { try { return localStorage.getItem(KEY) || ""; } catch(e){ return ""; } };
+
+/* ------------------------------------------------------------------ 描く */
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+/** 2026-09-12 14:30 → ["今日","14:30"] */
+function when(at){
+  const m = String(at).match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2})/);
+  if(!m) return [at, ""];
+  const d  = new Date(+m[1], +m[2]-1, +m[3]);
+  const t0 = new Date(); t0.setHours(0,0,0,0);
+  const gap = Math.round((t0 - d) / 86400000);
+  const label = gap === 0 ? "今日" : gap === 1 ? "昨日"
+              : gap < 7 ? `${gap}日前` : `${+m[2]}月${+m[3]}日`;
+  return [label, m[4]];
+}
+
+function draw(){
+  const shown = mode === "all" ? items : items.filter(x => !x.done);
+  const nNew  = items.filter(x => !x.done).length;
+  $("cNew").textContent = nNew || "";
+  $("cAll").textContent = items.length || "";
+  $("tabNew").setAttribute("aria-selected", mode === "new");
+  $("tabAll").setAttribute("aria-selected", mode === "all");
+
+  if(!shown.length){
+    $("list").innerHTML = mode === "new"
+      ? '<div class="note"><b>からっぽ</b>背中をトントンして、<br>思いついたことを喋ってください。</div>'
+      : '<div class="note"><b>まだ何もありません</b></div>';
+    return;
+  }
+
+  let html = "", day = null;
+  for(const x of shown){
+    const [d, t] = when(x.at);
+    if(d !== day){ day = d; html += `<div class="day">${esc(d)}</div>`; }
+    html += `<article class="item${x.done ? " done" : ""}" data-id="${esc(x.id)}">`
+          + `<div class="meta">${esc(t)}${x.done ? " ・拾った" : ""}`
+          + `<span class="via">${esc(x.from || "")}</span></div>`
+          + `<p class="txt">${esc(x.text)}</p>`
+          + (x.done ? "" : `<div class="act"><button class="pick">拾った</button></div>`)
+          + `</article>`;
+  }
+  $("list").innerHTML = html;
+}
+
+function toast(msg){
+  const el = $("toast"); el.textContent = msg; el.classList.add("on");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("on"), 1900);
+}
+
+/* ---------------------------------------------------------------- 読み込む */
+async function refresh(quiet){
+  if(busy) return; busy = true;
+  $("reload").classList.add("spin");
+  try{
+    const d = await call({ k: token(), mode: "all" });
+    if(!d.ok){ toast(d.error || "読めませんでした"); return; }
+    items = d.items || [];
+    try{ localStorage.setItem(CACHE, JSON.stringify(items)); }catch(e){}
+    draw();
+  }catch(e){
+    if(!quiet) toast("つながりませんでした");
+  }finally{
+    busy = false; $("reload").classList.remove("spin");
+  }
+}
+
+/* ------------------------------------------------------------------ 拾う */
+document.addEventListener("click", async e => {
+  const btn = e.target.closest(".pick");
+  if(!btn) return;
+  const card = btn.closest(".item"), id = card.dataset.id;
+  btn.textContent = "…";
+  try{
+    const d = await call({ k: token(), op: "done", ids: id });
+    if(!d.ok) throw new Error();
+    const it = items.find(x => x.id === id); if(it) it.done = true;
+    try{ localStorage.setItem(CACHE, JSON.stringify(items)); }catch(e){}
+    draw(); toast("拾いました");
+  }catch(err){
+    btn.textContent = "拾った"; toast("できませんでした");
+  }
+});
+
+$("tabNew").onclick = () => { mode = "new"; draw(); };
+$("tabAll").onclick = () => { mode = "all"; draw(); };
+$("reload").onclick = () => refresh();
+$("gearBtn").onclick = () => {
+  if(!confirm("合言葉を入れ直しますか？")) return;
+  try{ localStorage.removeItem(KEY); }catch(e){}
+  location.reload();
+};
+
+/* ------------------------------------------------------------------ 起動 */
+async function start(){
+  $("gate").hidden = true; $("app").hidden = false;
+  try{ items = JSON.parse(localStorage.getItem(CACHE) || "[]"); }catch(e){ items = []; }
+  draw();                       // 圏外でも、前に読めた分をすぐ出す
+  refresh(true);
+}
+
+function gate(){
+  $("app").hidden = true; $("gate").hidden = false;
+  $("go").onclick = async () => {
+    const v = $("key").value.trim();
+    if(!v){ $("err").textContent = "合言葉を入れてください"; return; }
+    $("err").textContent = "確かめています…";
+    try{
+      const d = await call({ k: v, mode: "all" });
+      if(!d.ok){ $("err").textContent = "合言葉がちがいます"; return; }
+      localStorage.setItem(KEY, v);
+      start();
+    }catch(e){ $("err").textContent = "つながりませんでした"; }
+  };
+  $("key").addEventListener("keydown", e => { if(e.key === "Enter") $("go").click(); });
+}
+
+token() ? start() : gate();
+
+/* 直したコードを iPhone のアプリにも確実に届ける（version.txt と照合して読み直す） */
+let vChecking = false;
+function checkVersion(){
+  if(vChecking || !navigator.onLine || !/^https?:$/.test(location.protocol)) return;
+  vChecking = true;
+  fetch("version.txt?t=" + Date.now(), { cache: "no-store" })
+    .then(r => r.ok ? r.text() : "").then(v => {
+      v = (v || "").trim();
+      if(v && v.length < 40 && v !== VER && sessionStorage.getItem("hirameki.reloadedFor") !== v){
+        sessionStorage.setItem("hirameki.reloadedFor", v); location.reload();
+      }
+    }).catch(() => {}).then(() => { vChecking = false; });
+}
+checkVersion();
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible"){ checkVersion(); if(token()) refresh(true); }
+});
+</script>
+
+<script>
+  // オフラインでも開けるようにする
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
