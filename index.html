@@ -73,11 +73,23 @@
   .meta .via{margin-left:auto; opacity:.8}
   .txt{margin:8px 0 0; font-size:16.5px; line-height:1.8; white-space:pre-wrap; word-break:break-word}
   .act{display:flex; justify-content:flex-end; margin-top:9px}
-  .pick{
+  .act button{
     border:1px solid var(--line); background:var(--card2); border-radius:10px;
     padding:7px 15px; font-size:13px; color:var(--dim);
   }
-  .pick:active{background:#242832; color:var(--ink)}
+  .act button:active{background:#242832; color:var(--ink)}
+  .act .save{background:var(--accent); color:#15161a; border-color:transparent; font-weight:600}
+  .txt{cursor:text}
+
+  /* 直しているあいだ */
+  .item.editing{border-color:var(--accent-dim); background:var(--card2)}
+  .ed{
+    width:100%; margin:8px 0 0; padding:10px 11px;
+    background:#101217; border:1px solid var(--line); border-radius:11px;
+    color:var(--ink); font:16.5px/1.8 inherit; resize:none; overflow:hidden;
+    -webkit-user-select:text;
+  }
+  .ed:focus{outline:none; border-color:var(--accent-dim)}
 
   /* ------------------------------------------------------------- 空・設定 */
   .note{color:var(--dim); text-align:center; padding:80px 24px; line-height:2.1; font-size:14.5px}
@@ -167,7 +179,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const VER   = "v1.0.3";                 // 直したら上げる。version.txt と必ず同じにする
+const VER   = "v1.1.0";                 // 直したら上げる。version.txt と必ず同じにする
 const API   = "https://script.google.com/macros/s/AKfycbxSf6PiDg-_Ndm0xPOQ6wr6ZhKFMXO_TblqRQEw1NYgfWIGuiCNtXUSs_PmqERlVuHxdA/exec";
 const KEY   = "hirameki.key";           // 合言葉（この端末の中だけ）
 const CACHE = "hirameki.cache";         // 最後に読めた中身。圏外でも開けるように
@@ -231,8 +243,9 @@ function draw(){
           + `<div class="meta">${esc(t)}${x.done ? " ・拾った" : ""}`
           + `<span class="via">${esc(x.from || "")}</span></div>`
           + `<p class="txt">${esc(x.text)}</p>`
-          + (x.done ? "" : `<div class="act"><button class="pick">拾った</button></div>`)
-          + `</article>`;
+          + `<div class="act"><button class="edit">直す</button>`
+          + (x.done ? "" : `<button class="pick">拾った</button>`)
+          + `</div></article>`;
   }
   $("list").innerHTML = html;
 }
@@ -274,6 +287,86 @@ document.addEventListener("click", async e => {
   }catch(err){
     btn.textContent = "拾った"; toast("できませんでした");
   }
+});
+
+/* 書き換えは長さの上限がないPOSTで送る。
+   text/plain にしておくと、ブラウザが事前確認(preflight)を挟まないので
+   GAS相手でもそのまま通る（application/json だと弾かれる）。 */
+async function send(body){
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 25000);
+  try{
+    const r = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ k: token() }, body)),
+      signal: ctl.signal
+    });
+    return await r.json();
+  } finally { clearTimeout(t); }
+}
+
+/* ------------------------------------------------------------ 指で直す */
+function grow(ta){ ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+
+function openEdit(card){
+  if(card.classList.contains("editing")) return;
+  const id = card.dataset.id;
+  const it = items.find(x => x.id === id); if(!it) return;
+
+  card.classList.add("editing");
+  card.querySelector(".txt").hidden = true;
+
+  const ta = document.createElement("textarea");
+  ta.className = "ed"; ta.value = it.text;
+  ta.addEventListener("input", () => grow(ta));
+  card.querySelector(".txt").after(ta);
+  grow(ta);
+
+  const act = card.querySelector(".act");
+  act.dataset.keep = act.innerHTML;
+  act.innerHTML = '<button class="cancel">やめる</button><button class="save">保存</button>';
+
+  ta.focus();
+  ta.setSelectionRange(ta.value.length, ta.value.length);
+}
+
+function closeEdit(card){
+  const ta = card.querySelector(".ed"); if(ta) ta.remove();
+  card.querySelector(".txt").hidden = false;
+  const act = card.querySelector(".act");
+  if(act.dataset.keep){ act.innerHTML = act.dataset.keep; delete act.dataset.keep; }
+  card.classList.remove("editing");
+}
+
+async function saveEdit(card){
+  const ta = card.querySelector(".ed"); if(!ta) return;
+  const id = card.dataset.id, val = ta.value.trim();
+  const it = items.find(x => x.id === id);
+  if(!val){ toast("空にはできません"); return; }
+  if(it && val === it.text){ closeEdit(card); return; }
+
+  const btn = card.querySelector(".save");
+  if(btn){ btn.textContent = "…"; btn.disabled = true; }
+  try{
+    const d = await send({ op: "edit", id, t: val });
+    if(!d.ok) throw new Error(d.error || "");
+    if(it) it.text = val;
+    try{ localStorage.setItem(CACHE, JSON.stringify(items)); }catch(e){}
+    draw(); toast("直しました");
+  }catch(e){
+    if(btn){ btn.textContent = "保存"; btn.disabled = false; }
+    toast("保存できませんでした");
+  }
+}
+
+document.addEventListener("click", e => {
+  const card = e.target.closest(".item"); if(!card) return;
+  if(e.target.closest(".save"))   return saveEdit(card);
+  if(e.target.closest(".cancel")) return closeEdit(card);
+  if(e.target.closest(".edit"))   return openEdit(card);
+  // 文字そのものを触っても直せる（指で押した場所から始まる）
+  if(e.target.closest(".txt"))    return openEdit(card);
 });
 
 $("tabNew").onclick = () => { mode = "new"; draw(); };
