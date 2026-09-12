@@ -167,7 +167,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const VER   = "v1.0.2";                 // 直したら上げる。version.txt と必ず同じにする
+const VER   = "v1.0.3";                 // 直したら上げる。version.txt と必ず同じにする
 const API   = "https://script.google.com/macros/s/AKfycbxSf6PiDg-_Ndm0xPOQ6wr6ZhKFMXO_TblqRQEw1NYgfWIGuiCNtXUSs_PmqERlVuHxdA/exec";
 const KEY   = "hirameki.key";           // 合言葉（この端末の中だけ）
 const CACHE = "hirameki.cache";         // 最後に読めた中身。圏外でも開けるように
@@ -218,7 +218,7 @@ function draw(){
 
   if(!shown.length){
     $("list").innerHTML = mode === "new"
-      ? '<div class="note"><b>からっぽ</b>背中をトントンして、<br>思いついたことを喋ってください。</div>'
+      ? '<div class="note"><b>からっぽ</b>アクションボタンを長押しして、<br>思いついたことを喋ってください。</div>'
       : '<div class="note"><b>まだ何もありません</b></div>';
     return;
   }
