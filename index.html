@@ -57,9 +57,10 @@
   /* ------------------------------------------------------------------ 本体 */
   main{padding:0 16px 60px; max-width:720px; margin:0 auto}
   .day{
-    position:sticky; top:96px; z-index:10;
-    padding:18px 0 8px; font-size:12.5px; letter-spacing:.1em; color:var(--faint);
-    background:linear-gradient(var(--bg) 62%,transparent);
+    position:sticky; top:95px; z-index:10;
+    padding:16px 0 9px; font-size:12.5px; letter-spacing:.1em; color:var(--faint);
+    background:var(--bg);              /* 透けると下の文字と重なって読めなくなる */
+    box-shadow:0 8px 8px -8px var(--bg);
   }
   .item{
     background:var(--card); border:1px solid var(--line); border-radius:15px;
@@ -166,7 +167,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const VER   = "v1.0.1";                 // 直したら上げる。version.txt と必ず同じにする
+const VER   = "v1.0.2";                 // 直したら上げる。version.txt と必ず同じにする
 const API   = "https://script.google.com/macros/s/AKfycbxSf6PiDg-_Ndm0xPOQ6wr6ZhKFMXO_TblqRQEw1NYgfWIGuiCNtXUSs_PmqERlVuHxdA/exec";
 const KEY   = "hirameki.key";           // 合言葉（この端末の中だけ）
 const CACHE = "hirameki.cache";         // 最後に読めた中身。圏外でも開けるように
