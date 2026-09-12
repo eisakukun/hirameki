@@ -166,7 +166,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const VER   = "v1.0.0";                 // 直したら上げる。version.txt と必ず同じにする
+const VER   = "v1.0.1";                 // 直したら上げる。version.txt と必ず同じにする
 const API   = "https://script.google.com/macros/s/AKfycbxSf6PiDg-_Ndm0xPOQ6wr6ZhKFMXO_TblqRQEw1NYgfWIGuiCNtXUSs_PmqERlVuHxdA/exec";
 const KEY   = "hirameki.key";           // 合言葉（この端末の中だけ）
 const CACHE = "hirameki.cache";         // 最後に読めた中身。圏外でも開けるように
@@ -175,20 +175,19 @@ const $ = id => document.getElementById(id);
 let items = [], mode = "new", busy = false;
 
 /* ---------------------------------------------------------------- 通信
-   GASは結果を別URLへ転送して返すので、ふつうの fetch はブラウザの安全装置に
-   弾かれる。関数呼び出しの形（JSONP）で受け取ればすり抜けられる。 */
-function call(params){
-  return new Promise((ok, ng) => {
-    const cb = "hira" + Math.random().toString(36).slice(2, 9);
-    const s  = document.createElement("script");
-    const t  = setTimeout(() => { cleanup(); ng(new Error("timeout")); }, 20000);
-    function cleanup(){ clearTimeout(t); delete window[cb]; s.remove(); }
-    window[cb] = d => { cleanup(); ok(d); };
-    s.onerror  = () => { cleanup(); ng(new Error("network")); };
-    const q = new URLSearchParams(Object.assign({ callback: cb }, params));
-    s.src = API + "?" + q.toString();
-    document.body.appendChild(s);
-  });
+   GASは結果を別URLへ転送して返す。
+   転送先を <script> で読む手（JSONP）は Google 側に弾かれて無言で固まるので、
+   ふつうの fetch を使う。GASは access-control-allow-origin: * を付けて返すので、
+   外のサイト（GitHub Pages）からでもそのまま読める。 */
+async function call(params){
+  const q = new URLSearchParams(Object.assign({ fmt: 'json' }, params));
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 20000);
+  try{
+    const r = await fetch(API + '?' + q.toString(), { signal: ctl.signal });
+    if(!r.ok) throw new Error('http ' + r.status);
+    return await r.json();
+  } finally { clearTimeout(t); }
 }
 
 const token = () => { try { return localStorage.getItem(KEY) || ""; } catch(e){ return ""; } };
